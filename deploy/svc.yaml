@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: pod-spec-mutator
+  namespace: injector
+  labels:
+    app: pod-spec-mutator
+spec:
+  ports:
+    - port: 443
+      targetPort: 8443
+  selector:
+    app: pod-spec-mutator

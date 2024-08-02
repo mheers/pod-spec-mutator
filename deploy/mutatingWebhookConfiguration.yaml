@@ -1,0 +1,25 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: pod-spec-mutator
+  annotations:
+    cert-manager.io/inject-ca-from: injector/pod-spec-mutator-cert
+webhooks:
+  - name: pod-spec-mutator.example.com
+    clientConfig:
+      service:
+        name: pod-spec-mutator
+        namespace: injector
+        path: "/mutate"
+        port: 443
+    rules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE"]
+        resources: ["pods"]
+        scope: "Namespaced"
+    # namespaceSelector: # This is optional
+    #   matchLabels:
+    #     kubernetes.io/metadata.name: injector
+    admissionReviewVersions: ["v1"]
+    sideEffects: None

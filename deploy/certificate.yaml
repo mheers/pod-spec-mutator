@@ -1,0 +1,13 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: pod-spec-mutator-cert
+  namespace: injector
+spec:
+  dnsNames:
+    - pod-spec-mutator.injector.svc
+    - pod-spec-mutator.injector.svc.cluster.local
+  issuerRef:
+    kind: ClusterIssuer
+    name: selfsigned-issuer
+  secretName: pod-spec-mutator-tls

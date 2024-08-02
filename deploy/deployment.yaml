@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pod-spec-mutator
+  namespace: injector
+  labels:
+    app: pod-spec-mutator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pod-spec-mutator
+  template:
+    metadata:
+      labels:
+        app: pod-spec-mutator
+    spec:
+      containers:
+        - name: pod-spec-mutator
+          image: docker.io/mheers/pod-spec-mutator:ad17e3e
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8443
+          volumeMounts:
+            - name: cert
+              mountPath: "/tmp/k8s-webhook-server/serving-certs"
+              readOnly: true
+          env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAME_REGEX
+              value: "^myapp-.*$"
+            - name: NAMESPACE_REGEX
+              value: "^prod-.*$"
+            - name: PATCH_SPEC_JSON
+              value: '{"hostAliases":[{"ip":"192.168.1.100","hostnames":["foo.local"]}],"containers":[{"name":"sidecar","image":"nginx:latest"}]}'
+      volumes:
+        - name: cert
+          secret:
+            secretName: pod-spec-mutator-tls
