@@ -8,7 +8,14 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-const patchJSONTest = `{"hostAliases":[{"ip":"192.168.1.100","hostnames":["foo.local"]}]}`
+const patchJSONTestUpperFirst = `
+{
+"HostAliases":[{"Ip":"192.168.1.100","Hostnames":["foo.local"]}],
+"Containers":[{"Name":"postgres","ImagePullPolicy":"Never"}]
+}
+`
+
+const patchJSONTest = `{"containers":[{"imagePullPolicy":"Never","name":"postgres"}],"hostAliases":[{"hostnames":["foo.local"],"ip":"192.168.1.100"}]}`
 
 func TestUnmarshalPathJSON(t *testing.T) {
 	var patchTemplate corev1.PodSpec
@@ -25,8 +32,9 @@ func TestCreatePatch(t *testing.T) {
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
 				{
-					Name:  "nginx",
-					Image: "nginx:latest",
+					Name:            "postgres",
+					Image:           "postgres:latest",
+					ImagePullPolicy: corev1.PullIfNotPresent,
 				},
 			},
 			HostAliases: []corev1.HostAlias{
@@ -38,11 +46,15 @@ func TestCreatePatch(t *testing.T) {
 		},
 	}
 
+	require.Equal(t, defaultPod.Spec.Containers[0].ImagePullPolicy, corev1.PullIfNotPresent)
+
 	newPod, err := applyPatch(defaultPod, []byte(patchJSONTest))
 	require.NoError(t, err)
 	require.NotEmpty(t, defaultPod.Spec.Containers)
 	require.NotEmpty(t, newPod.Spec.Containers)
 	require.Len(t, newPod.Spec.HostAliases, 2)
+	require.Len(t, newPod.Spec.Containers, 1)
+	require.Equal(t, newPod.Spec.Containers[0].ImagePullPolicy, corev1.PullNever)
 
 	patch, err := createPatch(*defaultPod, *newPod)
 	require.NoError(t, err)

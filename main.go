@@ -22,13 +22,27 @@ var (
 	deserializer  = codecs.UniversalDeserializer()
 
 	// Configuration variables
-	podNameRegex   = os.Getenv("POD_NAME_REGEX")
-	namespaceRegex = os.Getenv("NAMESPACE_REGEX")
-	patchJSON      = os.Getenv("PATCH_JSON")
+	podNameRegex     = os.Getenv("POD_NAME_REGEX")
+	namespaceRegex   = os.Getenv("NAMESPACE_REGEX")
+	patchJSONFromEnv = os.Getenv("PATCH_JSON")
+	patchJSON        = ""
 
 	currentNamespace = os.Getenv("POD_NAMESPACE")
 	currentPodName   = os.Getenv("POD_NAME")
 )
+
+func init() {
+	if patchJSONFromEnv == "" {
+		panic("PATCH_JSON environment variable must be set")
+	}
+
+	patchJSONBytes, err := processJSONBytes([]byte(patchJSONFromEnv))
+	if err != nil {
+		panic(err)
+	}
+
+	patchJSON = string(patchJSONBytes)
+}
 
 func mutate(w http.ResponseWriter, r *http.Request) {
 	var body []byte

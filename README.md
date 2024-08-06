@@ -21,7 +21,7 @@ dlv --listen :2345 --headless --api-version=2 exec /tmp/pod-spec-mutator
 ```
 
 ```bash
-telepresence leave pod-spec-mutator
+telepresence leave pod-spec-mutator-postgresoperator
 telepresence uninstall --all-agents
 telepresence quit
 telepresence helm uninstall
