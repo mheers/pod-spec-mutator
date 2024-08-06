@@ -70,3 +70,14 @@ func TestCreatePatch(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, patch)
 }
+
+func TestMatchRegex(t *testing.T) {
+	regex := "^(logical-backup|default-).*$"
+	podName := "logical-backup-default-28715940-dbq9b"
+	match := matchRegex(regex, podName)
+	require.True(t, match)
+
+	podName2 := "default-0"
+	match2 := matchRegex(regex, podName2)
+	require.True(t, match2)
+}

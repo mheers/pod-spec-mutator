@@ -119,7 +119,8 @@ func createAdmissionResponse(ar *admissionv1.AdmissionReview) *admissionv1.Admis
 	}
 
 	// Check if this pod is the controller itself
-	if req.Namespace == currentNamespace && pod.Name == currentPodName {
+	if req.Namespace == currentNamespace && (pod.Name == currentPodName || pod.GenerateName == currentPodName) {
+		fmt.Println("Skipping mutation for the controller pod")
 		return &admissionv1.AdmissionResponse{
 			Allowed: true,
 		}
@@ -127,8 +128,8 @@ func createAdmissionResponse(ar *admissionv1.AdmissionReview) *admissionv1.Admis
 
 	// Check if the pod name matches the regex
 	if podNameRegex != "" {
-		match, _ := regexp.MatchString(podNameRegex, pod.Name)
-		if !match {
+		if !matchRegex(podNameRegex, pod.Name) && !matchRegex(podNameRegex, pod.GenerateName) {
+			fmt.Println("Skipping mutation for pod with name: ", pod.Name)
 			return &admissionv1.AdmissionResponse{
 				Allowed: true,
 			}
@@ -196,6 +197,11 @@ func createPatch(originalPod, modifiedPod corev1.Pod) ([]byte, error) {
 	}
 
 	return json.Marshal(patches)
+}
+
+func matchRegex(pattern, s string) bool {
+	match, _ := regexp.MatchString(pattern, s)
+	return match
 }
 
 func printInfo() {
