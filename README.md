@@ -15,6 +15,7 @@ telepresence intercept pod-spec-mutator --port 8443
 make telepresence-get-certs
 make deploy-to-telepresence
 make exec-telepresence
+telepresence intercept pod-spec-mutator-postgresoperator --port 8443
 export PATCH_JSON='{"hostAliases":[{"ip":"192.168.1.100","hostnames":["foo.local"]}]}'
 dlv --listen :2345 --headless --api-version=2 exec /tmp/pod-spec-mutator
 ```

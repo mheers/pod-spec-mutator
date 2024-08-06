@@ -31,8 +31,8 @@ deploy-to-telepresence: build
 	docker cp bin/pod-spec-mutator devcontainer-telepresence-1:/tmp/pod-spec-mutator
 
 telepresence-get-certs:
-	kubectl get secrets pod-spec-mutator-tls -o json | jq -r '.data."tls.crt"' | base64 -d > /tmp/tls.crt
-	kubectl get secrets pod-spec-mutator-tls -o json | jq -r '.data."tls.key"' | base64 -d > /tmp/tls.key
+	kubectl get secrets pod-spec-mutator-postgresoperator-tls -o json | jq -r '.data."tls.crt"' | base64 -d > /tmp/tls.crt
+	kubectl get secrets pod-spec-mutator-postgresoperator-tls -o json | jq -r '.data."tls.key"' | base64 -d > /tmp/tls.key
 	docker exec -it devcontainer-telepresence-1 mkdir -p /tmp/k8s-webhook-server/serving-certs
 	docker cp /tmp/tls.crt devcontainer-telepresence-1:/tmp/k8s-webhook-server/serving-certs/tls.crt
 	docker cp /tmp/tls.key devcontainer-telepresence-1:/tmp/k8s-webhook-server/serving-certs/tls.key

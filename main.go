@@ -115,16 +115,6 @@ func createAdmissionResponse(ar *admissionv1.AdmissionReview) *admissionv1.Admis
 		}
 	}
 
-	// Check if the namespace matches the regex
-	if namespaceRegex != "" {
-		match, _ := regexp.MatchString(namespaceRegex, req.Namespace)
-		if !match {
-			return &admissionv1.AdmissionResponse{
-				Allowed: true,
-			}
-		}
-	}
-
 	// Apply the patch
 	patchedPod, err := applyPatch(&pod, []byte(patchJSON))
 	if err != nil {
