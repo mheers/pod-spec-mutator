@@ -24,7 +24,7 @@ var (
 	// Configuration variables
 	podNameRegex     = os.Getenv("POD_NAME_REGEX")
 	namespaceRegex   = os.Getenv("NAMESPACE_REGEX")
-	patchJSONFromEnv = os.Getenv("PATCH_JSON")
+	patchJSONFromEnv = os.Getenv("PATCH_SPEC_JSON")
 	patchJSON        = ""
 
 	currentNamespace = os.Getenv("POD_NAMESPACE")
@@ -33,7 +33,7 @@ var (
 
 func init() {
 	if patchJSONFromEnv == "" {
-		panic("PATCH_JSON environment variable must be set")
+		panic("PATCH_SPEC_JSON environment variable must be set")
 	}
 
 	patchJSONBytes, err := processJSONBytes([]byte(patchJSONFromEnv))
@@ -195,7 +195,7 @@ func createPatch(originalPod, modifiedPod corev1.Pod) ([]byte, error) {
 func printInfo() {
 	fmt.Println("POD_NAME_REGEX: ", podNameRegex)
 	fmt.Println("NAMESPACE_REGEX: ", namespaceRegex)
-	fmt.Println("PATCH_JSON: ", patchJSON)
+	fmt.Println("PATCH_SPEC_JSON: ", patchJSON)
 	fmt.Println("Current Namespace: ", currentNamespace)
 	fmt.Println("Current Pod Name: ", currentPodName)
 }
