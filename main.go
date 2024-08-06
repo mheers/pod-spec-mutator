@@ -33,15 +33,21 @@ var (
 
 func init() {
 	if patchJSONFromEnv == "" {
-		panic("PATCH_SPEC_JSON environment variable must be set")
+		fmt.Println("PATCH_SPEC_JSON environment variable is required")
+		return
 	}
 
-	patchJSONBytes, err := processJSONBytes([]byte(patchJSONFromEnv))
+	jsonUpperFirst, err := processJSONKeyUpperFirstBytes([]byte(patchJSONFromEnv))
 	if err != nil {
 		panic(err)
 	}
 
-	patchJSON = string(patchJSONBytes)
+	jsonCleaned, err := removeEmptyValuesBytes(jsonUpperFirst)
+	if err != nil {
+		panic(err)
+	}
+
+	patchJSON = string(jsonCleaned)
 }
 
 func mutate(w http.ResponseWriter, r *http.Request) {

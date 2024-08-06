@@ -44,7 +44,7 @@ func TestProcessJSON(t *testing.T) {
 				t.Fatalf("Failed to unmarshal input JSON: %v", err)
 			}
 
-			result := processJSON(input)
+			result := processJSONKeyUpperFirst(input)
 
 			resultJSON, err := json.Marshal(result)
 			if err != nil {
@@ -69,7 +69,109 @@ func TestProcessJSON(t *testing.T) {
 }
 
 func TestProcessJSONBytes(t *testing.T) {
-	result, err := processJSONBytes([]byte(patchJSONTestUpperFirst))
+	result, err := processJSONKeyUpperFirstBytes([]byte(patchJSONTestUpperFirst))
 	require.NoError(t, err)
 	require.Equal(t, patchJSONTest, string(result))
+}
+
+func TestRemoveEmptyValues(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "Simple object with empty value",
+			input:    `{"a":"1","b":""}`,
+			expected: `{"a":"1"}`,
+		},
+		{
+			name:     "Nested object with empty values",
+			input:    `{"a":{"b":"","c":"2"},"d":""}`,
+			expected: `{"a":{"c":"2"}}`,
+		},
+		{
+			name:     "Array with empty values",
+			input:    `{"a":["1","","2"],"b":[]}`,
+			expected: `{"a":["1","2"]}`,
+		},
+		{
+			name:     "Complex nested structure",
+			input:    `{"HostAliases":[{"Ip":"192.168.1.100","Hostnames":["foo.local"]}],"Containers":[{"Name":"postgres","ImagePullPolicy":"Never","Image":""}]}`,
+			expected: `{"HostAliases":[{"Hostnames":["foo.local"],"Ip":"192.168.1.100"}],"Containers":[{"ImagePullPolicy":"Never","Name":"postgres"}]}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var input interface{}
+			err := json.Unmarshal([]byte(tt.input), &input)
+			if err != nil {
+				t.Fatalf("Failed to unmarshal input: %v", err)
+			}
+
+			result := removeEmptyValues(input)
+
+			resultJSON, err := json.Marshal(result)
+			if err != nil {
+				t.Fatalf("Failed to marshal result: %v", err)
+			}
+
+			var expectedMap, resultMap map[string]interface{}
+			err = json.Unmarshal([]byte(tt.expected), &expectedMap)
+			if err != nil {
+				t.Fatalf("Failed to unmarshal expected: %v", err)
+			}
+			err = json.Unmarshal(resultJSON, &resultMap)
+			if err != nil {
+				t.Fatalf("Failed to unmarshal result: %v", err)
+			}
+
+			if !reflect.DeepEqual(expectedMap, resultMap) {
+				t.Errorf("removeEmptyValues() = %v, want %v", string(resultJSON), tt.expected)
+			}
+		})
+	}
+}
+
+func TestRemoveEmptyValuesBytes(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "Simple object with empty value",
+			input:    `{"a":"1","b":""}`,
+			expected: `{"a":"1"}`,
+		},
+		{
+			name:     "Complex nested structure",
+			input:    `{"HostAliases":[{"Ip":"192.168.1.100","Hostnames":["foo.local"]}],"Containers":[{"Name":"postgres","ImagePullPolicy":"Never","Image":""}]}`,
+			expected: `{"HostAliases":[{"Hostnames":["foo.local"],"Ip":"192.168.1.100"}],"Containers":[{"ImagePullPolicy":"Never","Name":"postgres"}]}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := removeEmptyValuesBytes([]byte(tt.input))
+			if err != nil {
+				t.Fatalf("removeEmptyValuesBytes() error = %v", err)
+			}
+
+			var expectedMap, resultMap map[string]interface{}
+			err = json.Unmarshal([]byte(tt.expected), &expectedMap)
+			if err != nil {
+				t.Fatalf("Failed to unmarshal expected: %v", err)
+			}
+			err = json.Unmarshal(result, &resultMap)
+			if err != nil {
+				t.Fatalf("Failed to unmarshal result: %v", err)
+			}
+
+			if !reflect.DeepEqual(expectedMap, resultMap) {
+				t.Errorf("removeEmptyValuesBytes() = %v, want %v", string(result), tt.expected)
+			}
+		})
+	}
 }
