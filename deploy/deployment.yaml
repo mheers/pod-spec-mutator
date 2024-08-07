@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: pod-spec-mutator
-          image: docker.io/mheers/pod-spec-mutator:487cd93
+          image: docker.io/mheers/pod-spec-mutator:ea6c533
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8443
@@ -34,12 +34,10 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
-            - name: POD_NAME_REGEX
-              value: "^myapp-.*$"
             - name: NAMESPACE_REGEX
               value: "^prod-.*$"
-            - name: PATCH_SPEC_JSON
-              value: '{"hostAliases":[{"ip":"192.168.1.100","hostnames":["foo.local"]}],"containers":[{"name":"sidecar","image":"nginx:latest"}]}'
+            - name: PATCHES
+              value: '{"patches": [{"podNameRegex": "demo","pod": {"spec": {"containers": [{"name": "postgres","imagePullPolicy": "Never","image": ""}],"hostAliases": [{"ip": "192.168.1.100","hostnames": ["foo.local"]}]}}}]}'
       volumes:
         - name: cert
           secret:
