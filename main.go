@@ -8,6 +8,7 @@ import (
 	"os"
 	"regexp"
 
+	"github.com/mheers/pod-spec-mutator/models"
 	admissionv1 "k8s.io/api/admission/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -22,33 +23,14 @@ var (
 	deserializer  = codecs.UniversalDeserializer()
 
 	// Configuration variables
-	podNameRegex     = os.Getenv("POD_NAME_REGEX")
-	namespaceRegex   = os.Getenv("NAMESPACE_REGEX")
-	patchJSONFromEnv = os.Getenv("PATCH_SPEC_JSON")
-	patchJSON        = ""
+	podNameRegex   = os.Getenv("POD_NAME_REGEX")
+	namespaceRegex = os.Getenv("NAMESPACE_REGEX")
+
+	patchesFromEnv = os.Getenv("PATCHES")
 
 	currentNamespace = os.Getenv("POD_NAMESPACE")
 	currentPodName   = os.Getenv("POD_NAME")
 )
-
-func init() {
-	if patchJSONFromEnv == "" {
-		fmt.Println("PATCH_SPEC_JSON environment variable is required")
-		return
-	}
-
-	jsonUpperFirst, err := processJSONKeyUpperFirstBytes([]byte(patchJSONFromEnv))
-	if err != nil {
-		panic(err)
-	}
-
-	jsonCleaned, err := removeEmptyValuesBytes(jsonUpperFirst)
-	if err != nil {
-		panic(err)
-	}
-
-	patchJSON = string(jsonCleaned)
-}
 
 func mutate(w http.ResponseWriter, r *http.Request) {
 	var body []byte
@@ -126,23 +108,19 @@ func createAdmissionResponse(ar *admissionv1.AdmissionReview) *admissionv1.Admis
 		}
 	}
 
-	// Check if the pod name matches the regex
-	if podNameRegex != "" {
-		if !matchRegex(podNameRegex, pod.Name) && !matchRegex(podNameRegex, pod.GenerateName) {
-			fmt.Println("Skipping mutation for pod with name: ", pod.Name)
-			return &admissionv1.AdmissionResponse{
-				Allowed: true,
-			}
-		}
-	}
-
-	// Apply the patch
-	patchedPod, err := applyPatch(&pod, []byte(patchJSON))
+	patchedPod, matched, err := applyPatchMultipleFromJSONString(&pod, patchesFromEnv)
 	if err != nil {
 		return &admissionv1.AdmissionResponse{
 			Result: &metav1.Status{
 				Message: err.Error(),
 			},
+		}
+	}
+
+	if !matched {
+		fmt.Println("No patches found for pod: ", pod.Name)
+		return &admissionv1.AdmissionResponse{
+			Allowed: true,
 		}
 	}
 
@@ -166,26 +144,87 @@ func createAdmissionResponse(ar *admissionv1.AdmissionReview) *admissionv1.Admis
 	}
 }
 
-func applyPatch(pod *corev1.Pod, patchJSONSpec []byte) (*corev1.Pod, error) {
+func applyPatchMultipleFromJSONString(pod *corev1.Pod, patchesJSONString string) (*corev1.Pod, bool, error) {
+	patches, err := getPatchesMapFromJSONString(patchesJSONString)
+	if err != nil {
+		return nil, false, fmt.Errorf("error getting patches from JSON string: %v", err)
+	}
+
+	return applyPatchMultiple(pod, patches)
+}
+
+func getPatchesMapFromJSONString(patchesJSONString string) (map[string]models.Patch, error) {
+	jsonUpperFirst, err := processJSONKeyUpperFirstBytes([]byte(patchesJSONString))
+	if err != nil {
+		panic(err)
+	}
+
+	jsonCleaned, err := removeEmptyValuesBytes(jsonUpperFirst)
+	if err != nil {
+		panic(err)
+	}
+
+	patchArray := []models.Patch{}
+	err = json.Unmarshal(jsonCleaned, &patchArray)
+	if err != nil {
+		panic(err)
+	}
+
+	patches := map[string]models.Patch{}
+	for _, patch := range patchArray {
+		patches[patch.PodNameRegex] = patch
+	}
+	return patches, nil
+}
+
+func applyPatchMultiple(pod *corev1.Pod, patches map[string]models.Patch) (*corev1.Pod, bool, error) {
+	matched := false
+	patchedPod := pod.DeepCopy()
+	for regex, patch := range patches {
+		// Check if the pod name matches the regex
+		if regex != "" {
+			currentMatch := matchRegex(regex, pod.Name) || matchRegex(regex, pod.GenerateName)
+			matched = matched || currentMatch
+			if !currentMatch {
+				continue
+			}
+		}
+
+		patchJSON, err := json.Marshal(patch.Pod)
+		if err != nil {
+			return nil, false, fmt.Errorf("error marshaling patch: %v", err)
+		}
+
+		// Apply the patch
+		patchedPod, err = applyPatch(patchedPod, []byte(patchJSON))
+		if err != nil {
+			return nil, false, fmt.Errorf("error applying patch: %v", err)
+		}
+	}
+
+	return patchedPod, matched, nil
+}
+
+func applyPatch(pod *corev1.Pod, patchJSON []byte) (*corev1.Pod, error) {
 	patchedPod := pod.DeepCopy()
 
-	originalSpec, err := json.Marshal(patchedPod.Spec)
+	original, err := json.Marshal(patchedPod)
 	if err != nil {
 		return nil, fmt.Errorf("error marshaling original pod spec: %v", err)
 	}
 
 	// Perform a strategic merge patch
-	mergedSpec, err := strategicpatch.StrategicMergePatch(originalSpec, patchJSONSpec, corev1.PodSpec{})
+	merged, err := strategicpatch.StrategicMergePatch(original, patchJSON, corev1.Pod{})
 	if err != nil {
 		return nil, fmt.Errorf("error merging patch: %v", err)
 	}
 
-	var newSpec corev1.PodSpec
-	if err := json.Unmarshal(mergedSpec, &newSpec); err != nil {
-		return nil, fmt.Errorf("error unmarshaling merged spec: %v", err)
+	var new corev1.Pod
+	if err := json.Unmarshal(merged, &new); err != nil {
+		return nil, fmt.Errorf("error unmarshaling merged: %v", err)
 	}
 
-	patchedPod.Spec = newSpec
+	patchedPod = new.DeepCopy()
 
 	return patchedPod, nil
 }
@@ -207,7 +246,7 @@ func matchRegex(pattern, s string) bool {
 func printInfo() {
 	fmt.Println("POD_NAME_REGEX: ", podNameRegex)
 	fmt.Println("NAMESPACE_REGEX: ", namespaceRegex)
-	fmt.Println("PATCH_SPEC_JSON: ", patchJSON)
+	fmt.Println("PATCHES: ", patchesFromEnv)
 	fmt.Println("Current Namespace: ", currentNamespace)
 	fmt.Println("Current Pod Name: ", currentPodName)
 }

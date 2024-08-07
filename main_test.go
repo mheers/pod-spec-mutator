@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const patchJSONTestUpperFirst = `
@@ -17,6 +18,35 @@ const patchJSONTestUpperFirst = `
 
 const patchJSONTest = `{"containers":[{"imagePullPolicy":"Never","name":"postgres"}],"hostAliases":[{"hostnames":["foo.local"],"ip":"192.168.1.100"}]}`
 
+const patchMultiple = `
+{
+	"patches": [
+		{
+			"podNameRegex": "demo",
+			"pod": {
+				"spec": {
+					"containers": [
+						{
+							"name": "postgres",
+							"imagePullPolicy": "Never",
+							"image": ""
+						}
+					],
+					"hostAliases": [
+						{
+							"ip": "192.168.1.100",
+							"hostnames": [
+								"foo.local"
+							]
+						}
+					]
+				}
+			}
+		}
+	]
+}
+`
+
 func TestUnmarshalPathJSON(t *testing.T) {
 	var patchTemplate corev1.PodSpec
 	err := json.Unmarshal([]byte(patchJSONTest), &patchTemplate)
@@ -24,20 +54,10 @@ func TestUnmarshalPathJSON(t *testing.T) {
 }
 
 func TestCreatePatch(t *testing.T) {
-	var patchTemplate corev1.PodSpec
-
-	jsonUpperFirst, err := processJSONKeyUpperFirstBytes([]byte(patchJSONTestUpperFirst))
-	require.NoError(t, err)
-
-	jsonCleaned, err := removeEmptyValuesBytes(jsonUpperFirst)
-	require.NoError(t, err)
-
-	jsonBytes := jsonCleaned
-
-	err = json.Unmarshal(jsonBytes, &patchTemplate)
-	require.NoError(t, err)
-
 	defaultPod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "demo",
+		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
 				{
@@ -57,8 +77,9 @@ func TestCreatePatch(t *testing.T) {
 
 	require.Equal(t, defaultPod.Spec.Containers[0].ImagePullPolicy, corev1.PullIfNotPresent)
 
-	newPod, err := applyPatch(defaultPod, jsonBytes)
+	newPod, matched, err := applyPatchMultipleFromJSONString(defaultPod, patchMultiple)
 	require.NoError(t, err)
+	require.True(t, matched)
 	require.NotEmpty(t, defaultPod.Spec.Containers)
 	require.NotEmpty(t, newPod.Spec.Containers)
 	require.Len(t, newPod.Spec.HostAliases, 2)
