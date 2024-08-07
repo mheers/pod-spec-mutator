@@ -23,11 +23,7 @@ var (
 	deserializer  = codecs.UniversalDeserializer()
 
 	// Configuration variables
-	podNameRegex   = os.Getenv("POD_NAME_REGEX")
-	namespaceRegex = os.Getenv("NAMESPACE_REGEX")
-
-	patchesFromEnv = os.Getenv("PATCHES")
-
+	patchesFromEnv   = os.Getenv("PATCHES")
 	currentNamespace = os.Getenv("POD_NAMESPACE")
 	currentPodName   = os.Getenv("POD_NAME")
 )
@@ -244,8 +240,6 @@ func matchRegex(pattern, s string) bool {
 }
 
 func printInfo() {
-	fmt.Println("POD_NAME_REGEX: ", podNameRegex)
-	fmt.Println("NAMESPACE_REGEX: ", namespaceRegex)
 	fmt.Println("PATCHES: ", patchesFromEnv)
 	fmt.Println("Current Namespace: ", currentNamespace)
 	fmt.Println("Current Pod Name: ", currentPodName)

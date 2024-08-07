@@ -34,8 +34,6 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
-            - name: NAMESPACE_REGEX
-              value: "^prod-.*$"
             - name: PATCHES
               value: '{"patches": [{"podNameRegex": "demo","pod": {"spec": {"containers": [{"name": "postgres","imagePullPolicy": "Never","image": ""}],"hostAliases": [{"ip": "192.168.1.100","hostnames": ["foo.local"]}]}}}]}'
       volumes:
