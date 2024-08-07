@@ -6,19 +6,19 @@ import (
 	"strings"
 )
 
-func processJSONKeyUpperFirst(data interface{}) interface{} {
+func processJSONKeyLowerFirst(data interface{}) interface{} {
 	switch v := data.(type) {
 	case map[string]interface{}:
 		newMap := make(map[string]interface{})
 		for key, value := range v {
 			newKey := strings.ToLower(string(key[0])) + key[1:]
-			newMap[newKey] = processJSONKeyUpperFirst(value)
+			newMap[newKey] = processJSONKeyLowerFirst(value)
 		}
 		return newMap
 	case []interface{}:
 		newSlice := make([]interface{}, len(v))
 		for i, value := range v {
-			newSlice[i] = processJSONKeyUpperFirst(value)
+			newSlice[i] = processJSONKeyLowerFirst(value)
 		}
 		return newSlice
 	default:
@@ -36,7 +36,7 @@ func processJSONKeyUpperFirstBytes(input []byte) ([]byte, error) {
 	}
 
 	// Process the JSON
-	processed := processJSONKeyUpperFirst(data)
+	processed := processJSONKeyLowerFirst(data)
 
 	// Marshal the processed data back to JSON
 	output, err := json.Marshal(processed)

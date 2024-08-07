@@ -44,7 +44,7 @@ func TestProcessJSON(t *testing.T) {
 				t.Fatalf("Failed to unmarshal input JSON: %v", err)
 			}
 
-			result := processJSONKeyUpperFirst(input)
+			result := processJSONKeyLowerFirst(input)
 
 			resultJSON, err := json.Marshal(result)
 			if err != nil {

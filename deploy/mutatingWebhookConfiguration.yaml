@@ -18,8 +18,8 @@ webhooks:
         operations: ["CREATE"]
         resources: ["pods"]
         scope: "Namespaced"
-    # namespaceSelector: # This is optional
-    #   matchLabels:
-    #     kubernetes.io/metadata.name: injector
+    namespaceSelector: # This is optional
+      matchLabels:
+        kubernetes.io/metadata.name: injector
     admissionReviewVersions: ["v1"]
     sideEffects: None
