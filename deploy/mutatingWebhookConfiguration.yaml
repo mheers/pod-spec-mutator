@@ -18,8 +18,11 @@ webhooks:
         operations: ["CREATE"]
         resources: ["pods"]
         scope: "Namespaced"
-    namespaceSelector: # This is optional
+    namespaceSelector:
       matchLabels:
         kubernetes.io/metadata.name: injector
+    matchConditions:
+      - expression: '!object.metadata.generateName.startsWith("pod-spec-mutator-")'
+        name: exclude-ourselves
     admissionReviewVersions: ["v1"]
     sideEffects: None

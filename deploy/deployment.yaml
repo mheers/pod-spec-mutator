@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: pod-spec-mutator
-          image: docker.io/mheers/pod-spec-mutator:ea6c533
+          image: docker.io/mheers/pod-spec-mutator:213408a
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8443
